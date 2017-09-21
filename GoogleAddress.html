@@ -1,0 +1,358 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
+    <meta charset="utf-8">
+    <title>Adding state to controls  map</title>
+    <style>
+        /* Always set the map height explicitly to define the size of the div
+        * element that contains the map. */
+        #map {
+            height: 100%;
+        }
+        /* Optional: Makes the sample page fill the window. */
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        #goCenterUI, #setCenterUI {
+            background-color: #fff;
+            border: 2px solid #fff;
+            border-radius: 3px;
+            box-shadow: 0 2px 6px rgba(0,0,0,.3);
+            cursor: pointer;
+            float: left;
+            margin-bottom: 22px;
+            text-align: center;
+        }
+
+        #goCenterText, #setCenterText {
+            color: rgb(25,25,25);
+            font-family: Roboto,Arial,sans-serif;
+            font-size: 15px;
+            line-height: 25px;
+            padding-left: 5px;
+            padding-right: 5px;
+        }
+
+        #setCenterUI {
+            margin-left: 12px;
+        }
+
+        #floating-panel {
+            position: absolute;
+            top: 9px;
+            right: 10%;
+            z-index: 5;
+            /*background-color: #fff;*/
+            padding: 5px;
+            /*border: 1px solid #999;*/
+            text-align: center;
+            font-family: 'Roboto','sans-serif';
+            line-height: 30px;
+            padding-left: 10px;
+        }
+    </style>
+
+</head>
+<body>
+    <input type="hidden" />
+    <div id="floating-panel">
+        <input id="address" style="border-radius: 2px;height:28px;border:1px solid #e5e5e5;" type="textbox" value="beijing">
+        <input id="submit" style="border-radius: 2px; border: 1px solid #e5e5e5; height: 28px; " type="button" value="Location">
+    </div>
+    <div id="map"></div>
+    <script>
+        var map, infowindow;
+        var chicago = { lat: 41.85, lng: -87.65 };
+
+        /**
+         * The CenterControl adds a control to the map that recenters the map on
+         * Chicago.
+         * @constructor
+         * @param {!Element} controlDiv
+         * @param {!google.maps.Map} map
+         * @param {?google.maps.LatLng} center
+         */
+        function CenterControl(controlDiv, map, center) {
+            // We set up a variable for this since we're adding event listeners
+            // later.
+            var control = this;
+
+            // Set the center property upon construction
+            control.center_ = center;
+            controlDiv.style.clear = 'both';
+
+            // Set CSS for the control border
+            var goCenterUI = document.createElement('div');
+            goCenterUI.id = 'goCenterUI';
+            goCenterUI.title = 'Click to recenter the map';
+            controlDiv.appendChild(goCenterUI);
+
+            // Set CSS for the control interior
+            var goCenterText = document.createElement('div');
+            goCenterText.id = 'goCenterText';
+            goCenterText.innerHTML = 'Google Map';
+            goCenterUI.appendChild(goCenterText);
+
+            // Set CSS for the setCenter control border
+            var setCenterUI = document.createElement('div');
+            setCenterUI.id = 'setCenterUI';
+            setCenterUI.title = 'Click to change the center of the map';
+            controlDiv.appendChild(setCenterUI);
+
+            // Set CSS for the control interior
+            var setCenterText = document.createElement('div');
+            setCenterText.id = 'setCenterText';
+            setCenterText.innerHTML = 'Amap Map';
+            setCenterUI.appendChild(setCenterText);
+
+            // Set up the click event listener for 'Center Map': Set the center of
+            // the map
+            // to the current center of the control.
+            goCenterUI.addEventListener('click', function () {
+                var currentCenter = control.getCenter();
+                map.setCenter(currentCenter);
+            });
+
+            // Set up the click event listener for 'Set Center': Set the center of
+            // the control to the current center of the map.
+            setCenterUI.addEventListener('click', function () {
+                var newCenter = map.getCenter();
+                control.setCenter(newCenter);
+            });
+        }
+
+        /**
+         * Define a property to hold the center state.
+         * @private
+         */
+        CenterControl.prototype.center_ = null;
+
+        /**
+         * Gets the map center.
+         * @return {?google.maps.LatLng}
+         */
+        CenterControl.prototype.getCenter = function () {
+            return this.center_;
+        };
+
+        /**
+         * Sets the map center.
+         * @param {?google.maps.LatLng} center
+         */
+        CenterControl.prototype.setCenter = function (center) {
+            this.center_ = center;
+        };
+
+        function initMap() {
+            map = new google.maps.Map(document.getElementById('map'), {
+                zoom: 12,
+                center: chicago
+            });
+
+            //bind map click event
+            map.addListener('click', function (e) {
+
+                placeMarkerAndPanTo(e.latLng, map);
+            });
+
+            infowindow = new google.maps.InfoWindow();
+
+            // Create the DIV to hold the control and call the CenterControl()
+            // constructor
+            // passing in this DIV.
+            var centerControlDiv = document.createElement('div');
+            var centerControl = new CenterControl(centerControlDiv, map, chicago);
+
+            centerControlDiv.index = 1;
+            centerControlDiv.style['padding-top'] = '10px';
+            map.controls[google.maps.ControlPosition.TOP_CENTER].push(centerControlDiv);
+
+            //搜索查询
+            var geocoder = new google.maps.Geocoder();
+
+            document.getElementById('submit').addEventListener('click', function () {
+                geocodeAddress(geocoder, map);
+            });
+
+
+          
+        }
+
+        //add map click event
+        function placeMarkerAndPanTo(latLng, map) {
+            var image = "http://gcsbucket.oss-cn-hongkong.aliyuncs.com/temp/local.png?x-oss-process=image/resize,w_40";
+            var marker = new google.maps.Marker({
+                position: latLng,
+                draggable: false,
+                map: map,
+                animation: google.maps.Animation.DROP,
+                icon:image
+            });
+            map.panTo(latLng);
+            var lat = latLng.lat();
+            var lng = latLng.lng();
+            //var po =new google.maps.LatLng( marker.getPosition());
+
+            //open infowindow
+            var contentString = '<div class="infowindows">' +
+        '<div class="infoTitile"></div>' +
+       ' <div class="infoContent">' +
+     '       <div class="infoRow"><div class="rowName">Store Name:</div><div class="rowValue"><input type="text"  id="storeName"  name="storeName" /></div></div>' +
+      '      <div class="infoRow"><div class="rowName">Store Address:</div><div class="rowValue"><input type="text"   id="storeAddress" name="storeAddress" /></div></div>' +
+      '      <div class="infoRow"><div class="rowName">Business hours:</div><div class="rowValue"><input type="text"  id="businessHours"  name="businessHours" /></div></div>' +
+      '      <div class="infoRow"><div class="rowName">Store Tel:</div><div class="rowValue"></div><input type="text"   id="storeTel" name="storeTel" /></div>' +
+        '    <div class="infoRow"><div class="rowName">Store Email:</div><div class="rowValue"><input type="text"  id="storeEmail"  name="storeEmail" /></div></div>' +
+      '      <div class="infoRow"  style="margin-top:10px;"><div class="rowName"></div><div class="rowValue"  style="text-align:right;"> <input type="button" value="submit"   onclick="saveData(' + lat + ',' + lng + ')" /></div></div>' +
+   '     </div>' +
+ '   </div>';
+
+            infowindow.setContent(contentString);
+
+            infowindow.open(map, marker);
+        }
+
+
+
+
+        //query map click event
+        function queryMarkerAndPanTo(map, data) {
+
+            var myLatlng = new google.maps.LatLng(data.gcenterlat, data.gcenterlng);
+            var image = "http://gcsbucket.oss-cn-hongkong.aliyuncs.com/temp/local.png?x-oss-process=image/resize,w_40";
+            var marker = new google.maps.Marker({
+                position: myLatlng,
+                draggable: false,
+                map: map,
+                animation: google.maps.Animation.DROP,
+                icon: image
+            });
+            map.panTo(myLatlng);
+            //var po =new google.maps.LatLng( marker.getPosition());
+            var newInfowindow = new google.maps.InfoWindow();
+            //open infowindow
+            var contentString = '<div class="infowindows">' +
+        '<div class="infoTitile"></div>' +
+       ' <div class="infoContent">' +
+     '       <div class="infoRow"><div class="rowName">Store Name:</div><div class="rowValue"><input type="text"  id="vstoreName"  name="storeName"  value=' + data.shopName + ' /></div></div>' +
+      '      <div class="infoRow"><div class="rowName">Store Address:</div><div class="rowValue"><input type="text"   id="vstoreAddress" name="storeAddress"   value=' + data.address + ' /></div></div>' +
+      '      <div class="infoRow"><div class="rowName">Business hours:</div><div class="rowValue"><input type="text"  id="vbusinessHours"  name="businessHours"   value=' + data.opening_hours + ' /></div></div>' +
+      '      <div class="infoRow"><div class="rowName">Store Tel:</div><div class="rowValue"></div><input type="text"   id="vstoreTel" name="storeTel"   value=' + data.shopTel + ' /></div>' +
+        '    <div class="infoRow"><div class="rowName">Store Email:</div><div class="rowValue"><input type="text"  id="vstoreEmail"  name="storeEmail"   value=' + data.shopEmail + ' /></div></div>' +
+      '      <div class="infoRow"  style="margin-top:10px;"><div class="rowName"></div><div class="rowValue"  style="text-align:right;"> <input type="button" value="delete"   onclick="delMapData(\'' + data.id + '\')" /></div></div>' +
+   '     </div>' +
+ '   </div>';
+
+            newInfowindow.setContent(contentString);
+
+            newInfowindow.open(map, marker);
+        }
+
+        function geocodeAddress(geocoder, resultsMap) {
+            var address = document.getElementById('address').value;
+            geocoder.geocode({ 'address': address }, function (results, status) {
+                if (status === 'OK') {
+                    resultsMap.setCenter(results[0].geometry.location);
+                    var marker = new google.maps.Marker({
+                        map: resultsMap,
+                        position: results[0].geometry.location
+                    });
+                } else {
+                    alert('Geocode was not successful for the following reason: ' + status);
+                }
+            });
+        }
+
+      
+    </script>
+    <script async defer   src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDOpbnRRd29hasEfdmWsxrL4N6smtu_Z6w&callback=initMap">
+    </script>
+    <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
+    <!--<script type="text/javascript" src="js/jquery.gomap-1.3.2.min.js"></script>--> 
+
+    <script>
+
+        $(document).ready(function () {
+            initQueryMarker();
+        });
+
+        function saveData(lat, lng) {
+            var storeName = document.getElementById("storeName").value;
+            var storeAddress = document.getElementById("storeAddress").value;
+            var businessHours = document.getElementById("businessHours").value;
+            var storeTel = document.getElementById("storeTel").value;
+            var storeEmail = document.getElementById("storeEmail").value;
+            $.ajax({
+                url: "http://114.215.28.4:9898/map/save",
+                type: "GET",
+                data: { jsonCallBack: "saveCallBack", params: '{"shopEmail":"' + storeEmail + '","gcenterlng":"' + lng + '", "gcenterlat":"' + lat + '","shopType":"1","opening_hours":"' + businessHours + '","shopName": "' + storeName + '","address":"' + storeAddress + '","shopTel":"' + storeTel + '"  }' },
+                dataType: "jsonp",
+                success: function (data) { },
+                complete: function (XMLHttpRequest, textStatus) { },
+            });
+        }
+
+        function saveCallBack(v)
+        {
+            var status = v.status;
+            if (status == 200) {
+                initQueryMarker();
+            }
+            else {
+                alert("Add data fail");
+            }
+        }
+
+
+        function delMapData(dataId) {
+            $.ajax({
+                url: "http://114.215.28.4:9898/map/del",
+                type: "GET",
+                data: { jsonCallBack: "delCallBack",id:dataId },
+                dataType: "jsonp",
+                success: function (data) { },
+                complete: function (XMLHttpRequest, textStatus) { },
+            });
+        }
+        function delCallBack(v)
+        {
+            var status = v.status;
+            if (status == 200) {
+                document.location.reload();
+            }
+            else {
+                alert("Del data fail");
+            }
+        }
+
+        function initQueryMarker()
+        {
+            $.ajax({
+                url: "http://114.215.28.4:9898/map/queryAll",
+                type: "GET",
+                data: { jsonCallBack: "queryCallBack" },
+                dataType: "jsonp",
+                success: function (data) { },
+                complete: function (XMLHttpRequest, textStatus) { },
+            });
+        }
+
+            function queryCallBack(v)
+            {
+                var data = v;
+                for (var i = 0,len = v.length; i<len;i++)
+                {
+                    var dataSingle = data[i];
+                    //production   data 
+                    queryMarkerAndPanTo(map, dataSingle);
+                }
+            }
+
+    </script>
+
+  
+</body>
+</html>

@@ -1,0 +1,431 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
+    <meta charset="utf-8">
+    <title>PowerVision offline retail store</title>
+    <style>
+        /* Always set the map height explicitly to define the size of the div
+        * element that contains the map. */
+        #map {
+            height: 100%;
+        }
+        /* Optional: Makes the sample page fill the window. */
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        #goCenterUI, #setCenterUI {
+            background-color: #fff;
+            border: 2px solid #fff;
+            border-radius: 3px;
+            box-shadow: 0 2px 6px rgba(0,0,0,.3);
+            cursor: pointer;
+            float: left;
+            margin-bottom: 22px;
+            text-align: center;
+        }
+
+        #goCenterText, #setCenterText {
+            color: rgb(25,25,25);
+            font-family: Roboto,Arial,sans-serif;
+            font-size: 15px;
+            line-height: 25px;
+            padding-left: 5px;
+            padding-right: 5px;
+        }
+
+        #setCenterUI {
+            margin-left: 12px;
+        }
+
+        #floating-panel {
+            position: absolute;
+            top: 2px;
+            right: 50px;
+            z-index: 5;
+            /*background-color: #fff;*/
+            padding: 5px;
+            /*border: 1px solid #999;*/
+            text-align: center;
+            font-family: 'Roboto','sans-serif';
+            line-height: 30px;
+            padding-left: 10px;
+        }
+
+        .rightList {
+            position: absolute;
+            top: 50px;
+            right: 50px;
+            border-radius: 4px;
+            width: 240px;
+            height: 80%;
+            z-index: 1000;
+            background-color: #fff;
+            opacity: 0.8;
+        }
+
+        .rightTitle {
+            width: 96%;
+            height: 30px;
+            margin: 4px;
+            border-radius: 4px;
+            background-color: #fff;
+        }
+
+        .rightContent {
+            width: 96%;
+            height: 90%;
+            margin: 4px;
+            border-radius: 4px;
+            overflow-y: scroll;
+            background-color: #ffffff;
+        }
+         
+        .rightContentRow {
+            width: 96%;
+            height: 150px;
+            margin: 2px;
+            border: 1px solid #e5e5e5;
+            border-radius: 2px;
+            float: left;
+            background-color: #fff;
+            cursor:pointer;
+        }
+
+         
+            
+        .rightContentRow:hover {
+            width: 96%;
+            height: 150px;
+            margin: 2px;
+            border: 1px solid #e5e5e5;
+            border-radius: 4px;
+            float: left;
+            background-color: #d7fff4;
+            cursor:pointer;
+        }
+
+        .localTitle {
+            width: 98%;
+            height: 28px;
+            margin: 2px;
+            float:left;
+            border-bottom:1px solid #d7fff4;
+            line-height:28px;
+        }
+
+        .localContent {
+            width: 98%;
+            height: 50px;
+            float:left;
+            margin: 2px;
+              border-bottom:1px solid #d7fff4;
+        }
+
+        .localPage {
+            width: 98%;
+            height: 25px;
+            float:left;
+            margin: 2px;
+              border-bottom:1px solid #d7fff4;
+        }
+
+        .infowindows {
+            width:350px;
+            height:150px;
+            background-color: #fff;
+        }
+
+        .infoTitile {
+            width:100%;
+            height:28px;
+               float:left;
+              border-bottom:1px solid #d7fff4;
+            background-color: #fff;
+        }
+        .infoContent {
+          width:100%;
+            height:100%;
+               float:left;
+              border-bottom:1px solid #d7fff4;
+            background-color: #fff;
+        }
+
+        .infoRow {
+         width:98%;
+            height:28px;
+               float:left;
+               margin:1px;
+              border-bottom:1px solid #d7fff4;
+            background-color: #fff;
+            line-height:25px;
+        }
+
+        .rowName {
+              width:20%;
+            height:25px;
+             line-height:25px;
+               float:left;
+            margin: 1px;
+            background-color: #fff;
+        }
+        .rowValue {
+            width:75%;
+            height:25px;
+              line-height:25px;
+               float:left;
+            margin: 1px;
+            background-color: #fff;
+        }
+
+
+    </style>
+
+</head>
+<body>
+    <div class="rightList">
+        <div class="rightTitle"></div>
+        <div id="dataList" class="rightContent">
+
+        </div>
+        <div class="rightPage"></div>
+    </div>
+    <input type="hidden" />
+    <div id="floating-panel">
+        <input id="address" style="border-radius: 4px;height:28px;border:1px solid #e5e5e5;" type="textbox">
+        <input id="submit" style="border-radius:4px; border: 1px solid #fff; height: 28px;background-color:#e5e5e5; " type="button" value="Search">
+    </div>
+    <div id="map"></div>
+    <script>
+        var map, infowindow;
+        var chicago = { lat: 41.85, lng: -87.65 };
+
+
+
+        function initMap() {
+            map = new google.maps.Map(document.getElementById('map'), {
+                zoom: 12,
+                center: chicago
+            });
+
+            //bind map click event
+            map.addListener('click', function (e) {
+
+                //placeMarkerAndPanTo(e.latLng, map);
+            });
+
+            infowindow = new google.maps.InfoWindow();
+
+            // Create the DIV to hold the control and call the CenterControl()
+
+            //搜索查询
+            var geocoder = new google.maps.Geocoder();
+
+            document.getElementById('submit').addEventListener('click', function () {
+                geocodeAddress(geocoder, map);
+            });
+
+
+
+        }
+
+
+
+
+        //query map click event
+        function queryMarkerAndPanTo(map, data) {
+
+            var myLatlng = new google.maps.LatLng(data.gcenterlat, data.gcenterlng);
+            var image = "http://gcsbucket.oss-cn-hongkong.aliyuncs.com/temp/local.png?x-oss-process=image/resize,w_40";
+            var marker = new google.maps.Marker({
+                position: myLatlng,
+                draggable: true,
+                map: map,
+                markerData: data,
+                animation: google.maps.Animation.DROP,
+                icon: image
+            });
+            map.panTo(myLatlng);
+            //var po =new google.maps.LatLng( marker.getPosition());
+            //var newInfowindow = new google.maps.InfoWindow();
+            //open infowindow
+            var contentString = '<div class="infowindows">' +
+        '<div class="infoTitile">' + data.shopName + ' </div>' +
+       ' <div class="infoContent">' +
+      '      <div class="infoRow"><div class="rowName">Store Address:</div><div class="rowValue">' + data.address + ' </div></div>' +
+      '      <div class="infoRow"><div class="rowName">Business hours:</div><div class="rowValue">' + data.opening_hours + ' </div></div>' +
+      '      <div class="infoRow"><div class="rowName">Store Tel:</div><div class="rowValue">' + data.shopTel + ' </div></div>' +
+        '    <div class="infoRow"><div class="rowName">Store Email:</div><div class="rowValue">' + data.shopEmail + ' </div></div>' +
+      //'      <div class="infoRow"  style="margin-top:10px;"><div class="rowName"></div><div class="rowValue"  style="text-align:right;"> <input type="button" value="delete"   onclick="queryOne(\'' + data.id + '\')" /></div></div>' +
+   '     </div>' +
+ '   </div>';
+
+            infowindow.setContent(contentString);
+            //add marker click event
+            marker.addListener('click', function (e) {
+
+                var markerData = this.markerData;
+                queryOne(markerData, map);
+            });
+
+            infowindow.open(map, marker);
+        }
+
+        function geocodeAddress(geocoder, resultsMap) {
+            var address = document.getElementById('address').value;
+            geocoder.geocode({ 'address': address }, function (results, status) {
+                if (status === 'OK') {
+                    resultsMap.setCenter(results[0].geometry.location);
+                    var marker = new google.maps.Marker({
+                        map: resultsMap,
+                        position: results[0].geometry.location
+                    });
+                } else {
+                    alert('Geocode was not successful for the following reason: ' + status);
+                }
+            });
+        }
+
+
+    </script>
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDOpbnRRd29hasEfdmWsxrL4N6smtu_Z6w&callback=initMap">
+    </script>
+    <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
+    <!--<script type="text/javascript" src="js/jquery.gomap-1.3.2.min.js"></script>-->
+
+    <script>
+
+        $(document).ready(function () {
+            initQueryMarker();
+            //init map location
+            queryGeoLocation();
+        });
+
+        function saveData(lat, lng) {
+            var storeName = document.getElementById("storeName").value;
+            var storeAddress = document.getElementById("storeAddress").value;
+            var businessHours = document.getElementById("businessHours").value;
+            var storeTel = document.getElementById("storeTel").value;
+            var storeEmail = document.getElementById("storeEmail").value;
+            $.ajax({
+                url: "http://47.90.105.127:9898/map/save",
+                type: "GET",
+                data: { jsonCallBack: "saveCallBack", params: '{"shopEmail":"' + storeEmail + '","gcenterlng":"' + lng + '", "gcenterlat":"' + lat + '","shopType":"1","opening_hours":"' + businessHours + '","shopName": "' + storeName + '","address":"' + storeAddress + '","shopTel":"' + storeTel + '"  }' },
+                dataType: "jsonp",
+                success: function (data) { },
+                complete: function (XMLHttpRequest, textStatus) { },
+            });
+        }
+
+        function saveCallBack(v) {
+            var status = v.status;
+            if (status == 200) {
+                initQueryMarker();
+            }
+            else {
+                alert("Add data fail");
+            }
+        }
+
+
+        function queryOne(data) {
+            $.ajax({
+                url: "http://47.90.105.127:9898/map/queryOne",
+                type: "GET",
+                data: { jsonCallBack: "queryOneCallBack", id: data.id },
+                dataType: "jsonp",
+                success: function (data) { },
+                complete: function (XMLHttpRequest, textStatus) { },
+            });
+        }
+        function queryOneCallBack(v) {
+            queryMarkerAndPanTo(map, v);
+        }
+
+
+        function queryListOne(dataId) {
+            $.ajax({
+                url: "http://47.90.105.127:9898/map/queryOne",
+                type: "GET",
+                data: { jsonCallBack: "queryOneCallBack", id: dataId },
+                dataType: "jsonp",
+                success: function (data) { },
+                complete: function (XMLHttpRequest, textStatus) { },
+            });
+        }
+
+        function initQueryMarker() {
+            $.ajax({
+                url: "http://47.90.105.127:9898/map/queryAll",
+                type: "GET",
+                data: { jsonCallBack: "queryCallBack" },
+                dataType: "jsonp",
+                success: function (data) { },
+                complete: function (XMLHttpRequest, textStatus) { },
+            });
+        }
+
+        function queryCallBack(v) {
+            var data = v;
+            //Create list  data
+            createList(v);
+            //Add marker to map alert infowindow
+            for (var i = 0, len = v.length; i < len; i++) {
+                var dataSingle = data[i];
+                //production   data
+                queryMarkerAndPanTo(map, dataSingle);
+            }
+        }
+
+        function createList(data) {
+            var htmlContent = "";
+            for (var i = 0, len = data.length; i < len; i++) {
+                var dataSingle = data[i];
+                //production   data
+                htmlContent += '  <div class="rightContentRow"     onclick="queryListOne(\'' + dataSingle.id + '\')" > '
+                                                     + '    <div class="localTitle">' + dataSingle.shopName + '</div> '
+                                                     + '    <div class="localContent">' + dataSingle.address + '</div> '
+                                                     + '     <div class="localPage">' + dataSingle.shopTel + '</div> '
+                                                     + '     <div class="localPage">' + dataSingle.shopEmail + '</div> '
+                                             + '  </div>';
+            }
+            $("#dataList").html(htmlContent);
+        }
+
+        function queryGeoLocation() {
+            $.ajax({
+                url: "http://47.90.105.127:9898/map/ip",
+                type: "GET",
+                data: { jsonCallBack: "queryGeoLocationCallBack" },
+                dataType: "jsonp",
+                success: function (data) { },
+                complete: function (XMLHttpRequest, textStatus) { },
+            });
+        }
+
+        function queryGeoLocationCallBack(v) {
+            document.getElementById('address').value = v;
+            //geocodeAddress(geocoder, map);
+            //搜索查询
+            var initGeocoder = new google.maps.Geocoder();
+            initGeocoder.geocode({ 'address': v }, function (results, status) {
+                if (status === 'OK') {
+
+                    map.setCenter(results[0].geometry.location);
+                    map.setZoom(5);
+
+                } else {
+                    alert('Geocode was not successful for the following reason: ' + status);
+                }
+            });
+
+        }
+
+    </script>
+
+
+</body>
+</html>
